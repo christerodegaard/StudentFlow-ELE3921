@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<h1 class="mb-4">
+  {% if task %}Edit Task for {{ assignment.title }}{% else %}New Task for {{ assignment.title }}{% endif %}
+</h1>
+
+<div class="card shadow-sm" style="max-width: 800px;">
+  <div class="card-body">
+    <form method="post">
+      {% csrf_token %}
+
+      <div class="mb-3">
+        <label class="form-label" for="{{ form.title.id_for_label }}">Title</label>
+        {{ form.title }}
+        {% if form.title.errors %}
+          <div class="text-danger small mt-1">
+            {{ form.title.errors }}
+          </div>
+        {% endif %}
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label" for="{{ form.status.id_for_label }}">Status</label>
+        {{ form.status }}
+        {% if form.status.errors %}
+          <div class="text-danger small mt-1">
+            {{ form.status.errors }}
+          </div>
+        {% endif %}
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label" for="{{ form.priority.id_for_label }}">Priority</label>
+        {{ form.priority }}
+        {% if form.priority.errors %}
+          <div class="text-danger small mt-1">
+            {{ form.priority.errors }}
+          </div>
+        {% endif %}
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label" for="{{ form.due_date.id_for_label }}">Due date</label>
+        {{ form.due_date }}
+        {% if form.due_date.errors %}
+          <div class="text-danger small mt-1">
+            {{ form.due_date.errors }}
+          </div>
+        {% endif %}
+      </div>
+
+      <button type="submit" class="btn btn-primary">
+        {% if task %}Update Task{% else %}Create Task{% endif %}
+      </button>
+
+      <a href="{% url 'task_list' assignment.id %}" class="btn btn-outline-secondary">
+        Cancel
+      </a>
+    </form>
+  </div>
+</div>
+
+{% endblock %}

@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<h1 class="mb-4">Create Account</h1>
+
+<div class="card shadow-sm" style="max-width: 700px;">
+  <div class="card-body">
+    <form method="post">
+      {% csrf_token %}
+
+      <!-- Uses Django UserCreationForm rendering -->
+      {{ form.as_p }}
+
+      <button type="submit" class="btn btn-primary">Sign Up</button>
+      <a href="{% url 'login' %}" class="btn btn-outline-secondary">Back to Login</a>
+    </form>
+  </div>
+</div>
+
+{% endblock %}

@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<!-- Uses Bootstrap cards and grid for layout (Bootstrap 5 docs) -->
+<!-- Django template loops used to render tasks dynamically -->
+
+<h1 class="mb-4">
+  Tasks for {{ assignment.title }}
+</h1>
+
+<a href="{% url 'task_create' assignment.id %}" class="btn btn-primary mb-4">
+  + Add Task
+</a>
+
+{% if tasks %}
+  <div class="row">
+    {% for task in tasks %}
+      <div class="col-md-6 mb-4">
+        <div class="card shadow-sm h-100">
+          <div class="card-body">
+
+            <h5 class="card-title">{{ task.title }}</h5>
+
+            <p class="card-text">
+              <strong>Status:</strong> {{ task.status }}<br>
+
+              <!-- Converts numeric priority into readable labels (Django template logic) -->
+              <strong>Priority:</strong>
+              {% if task.priority == 1 %}
+                Low
+              {% elif task.priority == 2 %}
+                Medium
+              {% else %}
+                High
+              {% endif %}
+              <br>
+
+              <strong>Due:</strong> {{ task.due_date }}
+            </p>
+
+            <div class="mt-3">
+              <a href="{% url 'task_detail' task.id %}" class="btn btn-sm btn-outline-primary">
+                View
+              </a>
+
+              <a href="{% url 'task_edit' task.id %}" class="btn btn-sm btn-outline-secondary">
+                Edit
+              </a>
+
+              <a href="{% url 'task_delete' task.id %}" class="btn btn-sm btn-outline-danger">
+                Delete
+              </a>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="alert alert-info">
+    No tasks yet.
+  </div>
+{% endif %}
+
+<a href="{% url 'assignment_list' assignment.course.id %}" class="btn btn-link mt-3">
+  Back to Assignments
+</a>
+
+{% endblock %}

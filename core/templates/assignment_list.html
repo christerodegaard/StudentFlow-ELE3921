@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<h1 class="mb-4">
+  Assignments for {{ course.code }} — {{ course.title }}
+</h1>
+
+<a href="{% url 'assignment_create' course.id %}" class="btn btn-primary mb-3">
+  + Add Assignment
+</a>
+
+{% if assignments %}
+  <div class="row">
+    {% for assignment in assignments %}
+      <div class="col-md-6 mb-3">
+        <div class="card shadow-sm">
+          <div class="card-body">
+            <h5 class="card-title">{{ assignment.title }}</h5>
+
+            <p class="card-text">
+              <strong>Due:</strong> {{ assignment.due_date }} <br>
+              <strong>Status:</strong> {{ assignment.status }}
+            </p>
+
+            <a href="{% url 'task_list' assignment.id %}" class="btn btn-sm btn-outline-primary">
+              View Tasks
+            </a>
+
+            <a href="{% url 'assignment_edit' assignment.id %}" class="btn btn-sm btn-outline-secondary">
+              Edit
+            </a>
+
+            <a href="{% url 'assignment_delete' assignment.id %}" class="btn btn-sm btn-outline-danger">
+              Delete
+            </a>
+          </div>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="alert alert-info">
+    No assignments yet.
+  </div>
+{% endif %}
+
+<a href="{% url 'course_list' %}" class="btn btn-link mt-3">
+  Back to Courses
+</a>
+
+{% endblock %}

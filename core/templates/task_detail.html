@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<!-- Uses Bootstrap buttons, cards, and list groups -->
+<!-- Uses Django template logic for conditional rendering and loops -->
+
+<div class="mb-4">
+  <a href="{% url 'task_list' task.assignment.id %}" class="btn btn-outline-secondary btn-sm">
+    Back to Tasks
+  </a>
+  <a href="{% url 'note_create' task.id %}" class="btn btn-primary btn-sm">
+    Add Note
+  </a>
+  <a href="{% url 'task_edit' task.id %}" class="btn btn-outline-secondary btn-sm">
+    Edit Task
+  </a>
+  <a href="{% url 'task_delete' task.id %}" class="btn btn-outline-danger btn-sm">
+    Delete Task
+  </a>
+</div>
+
+<div class="card shadow-sm mb-4">
+  <div class="card-body">
+    <h1 class="card-title mb-3">{{ task.title }}</h1>
+
+    <p class="card-text mb-2">
+      <strong>Status:</strong> {{ task.get_status_display }}
+    </p>
+
+    <p class="card-text mb-2">
+      <!-- Converts numeric priority into readable labels (Django template logic) -->
+      <strong>Priority:</strong>
+      {% if task.priority == 1 %}
+        Low
+      {% elif task.priority == 2 %}
+        Medium
+      {% else %}
+        High
+      {% endif %}
+    </p>
+
+    {% if task.due_date %}
+      <p class="card-text mb-0">
+        <strong>Due:</strong> {{ task.due_date }}
+      </p>
+    {% endif %}
+  </div>
+</div>
+
+<h2 class="mb-3">Notes</h2>
+
+{% if notes %}
+  <div class="card shadow-sm">
+    <div class="card-body p-0">
+      <ul class="list-group list-group-flush">
+        {% for note in notes %}
+          <li class="list-group-item">
+            <p class="mb-1">{{ note.content }}</p>
+            <small class="text-muted">
+              By {{ note.author }} — {{ note.created_at }}
+            </small>
+
+            <div class="mt-2">
+              <a href="{% url 'note_edit' note.id %}" class="btn btn-sm btn-outline-secondary">
+                Edit
+              </a>
+              <a href="{% url 'note_delete' note.id %}" class="btn btn-sm btn-outline-danger">
+                Delete
+              </a>
+            </div>
+          </li>
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+{% else %}
+  <div class="alert alert-info">
+    No notes yet.
+  </div>
+{% endif %}
+
+{% endblock %}

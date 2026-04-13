@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<h1 class="mb-4">Courses</h1>
+
+<a href="{% url 'course_create' %}" class="btn btn-primary mb-4">
+  + Add Course
+</a>
+
+{% if courses %}
+  {% for course in courses %}
+    <div class="card shadow-sm mb-4">
+      <div class="card-body">
+
+        <h5 class="card-title">
+          {{ course.code }} — {{ course.title }}
+        </h5>
+
+        <p class="card-text">
+          <strong>Semester:</strong> {{ course.semester }}
+        </p>
+
+        <!-- Bootstrap button styles + Django URL routing -->
+        <div class="mt-3">
+          <a href="{% url 'assignment_list' course.id %}" class="btn btn-sm btn-outline-primary">
+            View Assignments
+          </a>
+
+          <a href="{% url 'course_edit' course.id %}" class="btn btn-sm btn-outline-secondary">
+            Edit
+          </a>
+
+          <a href="{% url 'course_delete' course.id %}" class="btn btn-sm btn-outline-danger">
+            Delete
+          </a>
+        </div>
+
+      </div>
+    </div>
+  {% endfor %}
+{% else %}
+  <div class="alert alert-info">
+    No courses yet.
+  </div>
+{% endif %}
+
+{% endblock %}
