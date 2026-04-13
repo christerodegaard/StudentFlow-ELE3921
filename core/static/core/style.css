@@ -1,0 +1,74 @@
+body {
+  background-color: #f8f9fa;
+  color: #212529;
+}
+
+.navbar-brand {
+  letter-spacing: 0.3px;
+}
+
+main.container {
+  min-height: calc(100vh - 90px);
+}
+
+.card {
+  border-radius: 0.8rem;
+  border: 1px solid #dee2e6;
+}
+
+.card-title {
+  font-weight: 600;
+}
+
+.alert {
+  border-radius: 0.7rem;
+}
+
+.btn {
+  border-radius: 0.55rem;
+}
+
+.form-control,
+.form-select,
+textarea {
+  border-radius: 0.55rem;
+}
+
+.list-group-item {
+  padding-top: 1rem;
+  padding-bottom: 1rem;
+}
+
+h1, h2, h3 {
+  font-weight: 700;
+}
+
+a {
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+.empty-state {
+  background: #ffffff;
+  border: 1px dashed #ced4da;
+  border-radius: 0.75rem;
+  padding: 1rem;
+  color: #6c757d;
+}
+
+.action-row {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.form-card {
+  max-width: 700px;
+}
+
+.note-card + .note-card {
+  margin-top: 1rem;
+}
