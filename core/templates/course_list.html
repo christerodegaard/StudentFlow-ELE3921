@@ -4,9 +4,11 @@
 
 <h1 class="mb-4">Courses</h1>
 
-<a href="{% url 'course_create' %}" class="btn btn-primary mb-4">
-  + Add Course
-</a>
+{% if user.is_staff %}
+  <a href="{% url 'course_create' %}" class="btn btn-primary mb-4">
+    + Add Course
+  </a>
+{% endif %}
 
 {% if courses %}
   {% for course in courses %}
@@ -21,19 +23,20 @@
           <strong>Semester:</strong> {{ course.semester }}
         </p>
 
-        <!-- Bootstrap button styles + Django URL routing -->
         <div class="mt-3">
           <a href="{% url 'assignment_list' course.id %}" class="btn btn-sm btn-outline-primary">
             View Assignments
           </a>
 
-          <a href="{% url 'course_edit' course.id %}" class="btn btn-sm btn-outline-secondary">
-            Edit
-          </a>
+          {% if user.is_staff %}
+            <a href="{% url 'course_edit' course.id %}" class="btn btn-sm btn-outline-secondary">
+              Edit
+            </a>
 
-          <a href="{% url 'course_delete' course.id %}" class="btn btn-sm btn-outline-danger">
-            Delete
-          </a>
+            <a href="{% url 'course_delete' course.id %}" class="btn btn-sm btn-outline-danger">
+              Delete
+            </a>
+          {% endif %}
         </div>
 
       </div>
@@ -41,7 +44,7 @@
   {% endfor %}
 {% else %}
   <div class="alert alert-info">
-    No courses yet.
+    You are not enrolled in any courses yet.
   </div>
 {% endif %}
 
