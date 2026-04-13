@@ -4,24 +4,43 @@ from django.contrib import messages
 from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import UserCreationForm
+from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
 
 from .forms import AssignmentForm, CourseForm, NoteForm, TaskForm
-from .models import Assignment, Course, Note, Task
+from .models import Assignment, Course, Enrollment, Note, Task
+
+
+def get_user_courses(user):
+    # Staff users can see all courses
+    if user.is_staff:
+        return Course.objects.all().order_by("code")
+
+    # Regular users only see courses they are enrolled in
+    return Course.objects.filter(enrollment__user=user).distinct().order_by("code")
+
+
+def user_has_course_access(user, course):
+    # Staff users can access all courses
+    if user.is_staff:
+        return True
+
+    return Enrollment.objects.filter(user=user, course=course).exists()
 
 
 @login_required
 def dashboard(request):
-    # Used for the deadline filters on the dashboard
     today = date.today()
     upcoming_limit = today + timedelta(days=7)
 
-    # Only show tasks belonging to the logged-in user
+    # Only show tasks assigned to the logged-in user
     tasks = Task.objects.filter(
         assigned_to=request.user
     ).select_related("assignment", "assignment__course")
 
-    # Read optional filter values from the URL query string
+    # Limit course filter choices to enrolled courses
+    courses = get_user_courses(request.user)
+
     selected_course = request.GET.get("course")
     selected_status = request.GET.get("status")
     selected_due = request.GET.get("due")
@@ -39,7 +58,6 @@ def dashboard(request):
     elif selected_due == "today":
         tasks = tasks.filter(due_date=today)
 
-    # Split the filtered queryset into sections shown on the dashboard
     overdue = tasks.filter(due_date__lt=today, status__in=["todo", "doing"])
     due_soon = tasks.filter(
         due_date__range=(today, upcoming_limit),
@@ -48,9 +66,6 @@ def dashboard(request):
     completed = tasks.filter(status="done")
     todo = tasks.filter(status="todo")
     doing = tasks.filter(status="doing")
-
-    # Used in the filter dropdown
-    courses = Course.objects.all().order_by("code")
 
     context = {
         "overdue": overdue,
@@ -69,13 +84,17 @@ def dashboard(request):
 
 @login_required
 def course_list(request):
-    # Show all courses ordered by course code
-    courses = Course.objects.all().order_by("code")
+    # Only show courses the user is enrolled in
+    courses = get_user_courses(request.user)
     return render(request, "course_list.html", {"courses": courses})
 
 
 @login_required
 def course_create(request):
+    # Keep course creation restricted to staff/admin
+    if not request.user.is_staff:
+        raise Http404("You do not have permission to create courses.")
+
     if request.method == "POST":
         form = CourseForm(request.POST)
         if form.is_valid():
@@ -91,6 +110,9 @@ def course_create(request):
 @login_required
 def course_edit(request, course_id):
     course = get_object_or_404(Course, id=course_id)
+
+    if not user_has_course_access(request.user, course) or not request.user.is_staff:
+        raise Http404("You do not have permission to edit this course.")
 
     if request.method == "POST":
         form = CourseForm(request.POST, instance=course)
@@ -108,6 +130,9 @@ def course_edit(request, course_id):
 def course_delete(request, course_id):
     course = get_object_or_404(Course, id=course_id)
 
+    if not user_has_course_access(request.user, course) or not request.user.is_staff:
+        raise Http404("You do not have permission to delete this course.")
+
     if request.method == "POST":
         course.delete()
         messages.success(request, "Course deleted successfully.")
@@ -118,8 +143,12 @@ def course_delete(request, course_id):
 
 @login_required
 def assignment_list(request, course_id):
-    # Get the selected course first, then show its assignments
     course = get_object_or_404(Course, id=course_id)
+
+    # User must be enrolled in this course
+    if not user_has_course_access(request.user, course):
+        raise Http404("You do not have access to this course.")
+
     assignments = Assignment.objects.filter(course=course).order_by("due_date", "title")
 
     return render(
@@ -133,10 +162,13 @@ def assignment_list(request, course_id):
 def assignment_create(request, course_id):
     course = get_object_or_404(Course, id=course_id)
 
+    # Restrict assignment management to staff/admin for now
+    if not user_has_course_access(request.user, course) or not request.user.is_staff:
+        raise Http404("You do not have permission to create assignments for this course.")
+
     if request.method == "POST":
         form = AssignmentForm(request.POST)
         if form.is_valid():
-            # commit=False lets us attach the course before saving
             assignment = form.save(commit=False)
             assignment.course = course
             assignment.save()
@@ -152,6 +184,9 @@ def assignment_create(request, course_id):
 def assignment_edit(request, assignment_id):
     assignment = get_object_or_404(Assignment, id=assignment_id)
     course = assignment.course
+
+    if not user_has_course_access(request.user, course) or not request.user.is_staff:
+        raise Http404("You do not have permission to edit this assignment.")
 
     if request.method == "POST":
         form = AssignmentForm(request.POST, instance=assignment)
@@ -174,6 +209,9 @@ def assignment_delete(request, assignment_id):
     assignment = get_object_or_404(Assignment, id=assignment_id)
     course_id = assignment.course.id
 
+    if not user_has_course_access(request.user, assignment.course) or not request.user.is_staff:
+        raise Http404("You do not have permission to delete this assignment.")
+
     if request.method == "POST":
         assignment.delete()
         messages.success(request, "Assignment deleted successfully.")
@@ -190,7 +228,10 @@ def assignment_delete(request, assignment_id):
 def task_list(request, assignment_id):
     assignment = get_object_or_404(Assignment, id=assignment_id)
 
-    # A user should only see their own tasks
+    if not user_has_course_access(request.user, assignment.course):
+        raise Http404("You do not have access to this assignment.")
+
+    # Users only see their own tasks
     tasks = Task.objects.filter(
         assignment=assignment,
         assigned_to=request.user,
@@ -203,10 +244,12 @@ def task_list(request, assignment_id):
 def task_create(request, assignment_id):
     assignment = get_object_or_404(Assignment, id=assignment_id)
 
+    if not user_has_course_access(request.user, assignment.course):
+        raise Http404("You do not have access to this assignment.")
+
     if request.method == "POST":
         form = TaskForm(request.POST)
         if form.is_valid():
-            # Set assignment and user in the view instead of exposing them in the form
             task = form.save(commit=False)
             task.assignment = assignment
             task.assigned_to = request.user
@@ -221,16 +264,18 @@ def task_create(request, assignment_id):
 
 @login_required
 def task_detail(request, task_id):
-    # Restrict access so users only open their own task pages
+    # Users can only open their own task detail page
     task = get_object_or_404(Task, id=task_id, assigned_to=request.user)
     notes = Note.objects.filter(task=task).order_by("-created_at")
-
     return render(request, "task_detail.html", {"task": task, "notes": notes})
 
 
 @login_required
 def task_edit(request, task_id):
     task = get_object_or_404(Task, id=task_id, assigned_to=request.user)
+
+    if not user_has_course_access(request.user, task.assignment.course):
+        raise Http404("You do not have access to this task.")
 
     if request.method == "POST":
         form = TaskForm(request.POST, instance=task)
@@ -252,6 +297,9 @@ def task_edit(request, task_id):
 def task_delete(request, task_id):
     task = get_object_or_404(Task, id=task_id, assigned_to=request.user)
 
+    if not user_has_course_access(request.user, task.assignment.course):
+        raise Http404("You do not have access to this task.")
+
     if request.method == "POST":
         assignment_id = task.assignment.id
         task.delete()
@@ -265,10 +313,12 @@ def task_delete(request, task_id):
 def note_create(request, task_id):
     task = get_object_or_404(Task, id=task_id, assigned_to=request.user)
 
+    if not user_has_course_access(request.user, task.assignment.course):
+        raise Http404("You do not have access to this task.")
+
     if request.method == "POST":
         form = NoteForm(request.POST)
         if form.is_valid():
-            # The note should always belong to the current task and current user
             note = form.save(commit=False)
             note.task = task
             note.author = request.user
@@ -285,6 +335,9 @@ def note_create(request, task_id):
 def note_edit(request, note_id):
     note = get_object_or_404(Note, id=note_id, author=request.user)
     task = note.task
+
+    if not user_has_course_access(request.user, task.assignment.course):
+        raise Http404("You do not have access to this note.")
 
     if request.method == "POST":
         form = NoteForm(request.POST, instance=note)
@@ -303,6 +356,9 @@ def note_delete(request, note_id):
     note = get_object_or_404(Note, id=note_id, author=request.user)
     task_id = note.task.id
 
+    if not user_has_course_access(request.user, note.task.assignment.course):
+        raise Http404("You do not have access to this note.")
+
     if request.method == "POST":
         note.delete()
         messages.success(request, "Note deleted successfully.")
@@ -312,7 +368,7 @@ def note_delete(request, note_id):
 
 
 def register(request):
-    # Use Django's built-in registration form for a simple signup flow
+    # Simple signup using Django's built-in user form
     if request.method == "POST":
         form = UserCreationForm(request.POST)
         if form.is_valid():
