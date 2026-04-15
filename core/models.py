@@ -1,5 +1,5 @@
 # core/models.py
-from django.conf import settings
+from django.contrib.auth.models import User
 from django.db import models
 
 
@@ -9,7 +9,7 @@ class Course(models.Model):
     semester = models.CharField(max_length=50)
 
     def __str__(self):
-        return f"{self.code} — {self.title} ({self.semester})"
+        return f"{self.code} - {self.title} ({self.semester})"
 
 
 class Enrollment(models.Model):
@@ -19,14 +19,9 @@ class Enrollment(models.Model):
         ("instructor", "Instructor"),
     ]
 
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
     course = models.ForeignKey(Course, on_delete=models.CASCADE)
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default="student")
-
-    class Meta:
-        constraints = [
-            models.UniqueConstraint(fields=["user", "course"], name="unique_enrollment_user_course")
-        ]
 
     def __str__(self):
         return f"{self.user} in {self.course} ({self.role})"
@@ -39,7 +34,7 @@ class Assignment(models.Model):
         ("done", "Done"),
     ]
 
-    course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name="assignments")
+    course = models.ForeignKey(Course, on_delete=models.CASCADE)
     title = models.CharField(max_length=200)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="not_started")
     due_date = models.DateField(null=True, blank=True)
@@ -60,8 +55,8 @@ class Task(models.Model):
         (3, "High"),
     ]
 
-    assignment = models.ForeignKey(Assignment, on_delete=models.CASCADE, related_name="tasks")
-    assigned_to = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="tasks")
+    assignment = models.ForeignKey(Assignment, on_delete=models.CASCADE)
+    assigned_to = models.ForeignKey(User, on_delete=models.CASCADE)
     title = models.CharField(max_length=200)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="todo")
     priority = models.IntegerField(choices=PRIORITY_CHOICES, default=2)
@@ -72,8 +67,8 @@ class Task(models.Model):
 
 
 class Note(models.Model):
-    task = models.ForeignKey(Task, on_delete=models.CASCADE, related_name="notes")
-    author = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="notes")
+    task = models.ForeignKey(Task, on_delete=models.CASCADE)
+    author = models.ForeignKey(User, on_delete=models.CASCADE)
     content = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
 
