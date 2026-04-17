@@ -62,6 +62,27 @@ def dashboard(request):
     in_progress_tasks = tasks.filter(status="doing").order_by("due_date", "priority")
     completed_tasks = tasks.filter(status="done").order_by("-due_date")
 
+    course_summaries = []
+    for course in courses:
+        course_tasks = tasks.filter(assignment__course=course)
+        total = course_tasks.count()
+        done_count = course_tasks.filter(status="done").count()
+        doing_count = course_tasks.filter(status="doing").count()
+        overdue_count = course_tasks.filter(due_date__lt=today).exclude(status="done").count()
+
+        progress_percent = 0
+        if total > 0:
+            progress_percent = round((done_count / total) * 100)
+
+        course_summaries.append({
+            "course": course,
+            "total": total,
+            "done": done_count,
+            "doing": doing_count,
+            "overdue": overdue_count,
+            "progress_percent": progress_percent,
+        })
+
     context = {
         "courses": courses,
         "selected_course": selected_course,
@@ -77,10 +98,12 @@ def dashboard(request):
         "todo_count": todo_tasks.count(),
         "in_progress_count": in_progress_tasks.count(),
         "completed_count": completed_tasks.count(),
+        "course_summaries": course_summaries,
     }
     return render(request, "dashboard.html", context)
 
 @login_required
+
 def course_list(request):
     if request.user.is_staff or request.user.is_superuser:
         courses = Course.objects.all().order_by("code", "semester")
