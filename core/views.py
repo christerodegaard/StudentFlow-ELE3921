@@ -25,17 +25,23 @@ def dashboard(request):
     next_week = today + timedelta(days=7)
 
     if request.user.is_staff or request.user.is_superuser:
-        courses = Course.objects.all()
-        tasks = Task.objects.select_related("assignment", "assignment__course", "assigned_to").all()
+        courses = Course.objects.all().order_by("code", "semester")
+        tasks = Task.objects.select_related(
+            "assignment",
+            "assignment__course",
+            "assigned_to",
+        ).all()
     else:
-        courses = Course.objects.filter(enrollment__user=request.user).distinct()
-        tasks = Task.objects.select_related("assignment", "assignment__course", "assigned_to").filter(
-            assigned_to=request.user
-        )
+        courses = Course.objects.filter(enrollment__user=request.user).distinct().order_by("code", "semester")
+        tasks = Task.objects.select_related(
+            "assignment",
+            "assignment__course",
+            "assigned_to",
+        ).filter(assigned_to=request.user)
 
-    selected_course = request.GET.get("course")
-    selected_status = request.GET.get("status")
-    selected_due_date = request.GET.get("due_date")
+    selected_course = request.GET.get("course", "")
+    selected_status = request.GET.get("status", "")
+    selected_due_date = request.GET.get("due_date", "")
 
     if selected_course:
         tasks = tasks.filter(assignment__course_id=selected_course)
@@ -43,17 +49,17 @@ def dashboard(request):
     if selected_status:
         tasks = tasks.filter(status=selected_status)
 
-    if selected_due_date == "overdue":
-        tasks = tasks.filter(due_date__lt=today).exclude(status="done")
-    elif selected_due_date == "7days":
-        tasks = tasks.filter(due_date__range=[today, next_week]).exclude(status="done")
-    elif selected_due_date == "today":
+    if selected_due_date == "today":
         tasks = tasks.filter(due_date=today)
+    elif selected_due_date == "7days":
+        tasks = tasks.filter(due_date__range=[today, next_week])
+    elif selected_due_date == "overdue":
+        tasks = tasks.filter(due_date__lt=today).exclude(status="done")
 
     overdue = tasks.filter(due_date__lt=today).exclude(status="done").order_by("due_date")
     due_soon = tasks.filter(due_date__range=[today, next_week]).exclude(status="done").order_by("due_date")
-    todo_tasks = tasks.filter(status="todo").order_by("due_date")
-    in_progress_tasks = tasks.filter(status="doing").order_by("due_date")
+    todo_tasks = tasks.filter(status="todo").order_by("due_date", "priority")
+    in_progress_tasks = tasks.filter(status="doing").order_by("due_date", "priority")
     completed_tasks = tasks.filter(status="done").order_by("-due_date")
 
     context = {
@@ -66,6 +72,11 @@ def dashboard(request):
         "todo_tasks": todo_tasks,
         "in_progress_tasks": in_progress_tasks,
         "completed_tasks": completed_tasks,
+        "overdue_count": overdue.count(),
+        "due_soon_count": due_soon.count(),
+        "todo_count": todo_tasks.count(),
+        "in_progress_count": in_progress_tasks.count(),
+        "completed_count": completed_tasks.count(),
     }
     return render(request, "dashboard.html", context)
 
