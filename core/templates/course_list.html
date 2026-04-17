@@ -2,39 +2,74 @@
 
 {% block content %}
 
-<h1 class="mb-4">Courses</h1>
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h1 class="mb-0">Courses</h1>
+  <div>
+    <a href="{% url 'course_join' %}" class="btn btn-outline-primary me-2">
+      Join Course
+    </a>
+    <a href="{% url 'course_create' %}" class="btn btn-primary">
+      + Add Course
+    </a>
+  </div>
+</div>
 
-{% if user.is_staff %}
-  <a href="{% url 'course_create' %}" class="btn btn-primary mb-4">
-    + Add Course
-  </a>
-{% endif %}
-
-{% if courses %}
-  {% for course in courses %}
+{% if course_data %}
+  {% for item in course_data %}
     <div class="card shadow-sm mb-4">
       <div class="card-body">
 
-        <h5 class="card-title">
-          {{ course.code }} — {{ course.title }}
-        </h5>
+        <div class="d-flex justify-content-between align-items-start">
+          <div>
+            <h5 class="card-title mb-1">
+              {{ item.course.code }} — {{ item.course.title }}
+            </h5>
+            <p class="card-text mb-2">
+              <strong>Semester:</strong> {{ item.course.semester }}
+            </p>
+          </div>
 
-        <p class="card-text">
-          <strong>Semester:</strong> {{ course.semester }}
-        </p>
+          <div>
+            {% if item.role == "instructor" %}
+              <span class="badge bg-dark">Instructor</span>
+            {% elif item.role == "ta" %}
+              <span class="badge bg-secondary">TA</span>
+            {% elif item.role == "student" %}
+              <span class="badge bg-info text-dark">Student</span>
+            {% elif item.role == "admin" %}
+              <span class="badge bg-danger">Admin</span>
+            {% endif %}
+          </div>
+        </div>
 
-        <div class="mt-3">
-          <a href="{% url 'assignment_list' course.id %}" class="btn btn-sm btn-outline-primary">
+        {% if item.role == "instructor" or item.role == "admin" %}
+          <p class="mb-2">
+            <strong>Join code:</strong> <code>{{ item.course.join_code }}</code>
+          </p>
+        {% endif %}
+
+        <div class="mt-3 d-flex flex-wrap gap-2">
+          <a href="{% url 'assignment_list' item.course.id %}" class="btn btn-sm btn-outline-primary">
             View Assignments
           </a>
 
-          {% if user.is_staff %}
-            <a href="{% url 'course_edit' course.id %}" class="btn btn-sm btn-outline-secondary">
+          {% if item.role == "instructor" or item.role == "admin" %}
+            <a href="{% url 'manage_enrollments' item.course.id %}" class="btn btn-sm btn-outline-dark">
+              Manage Enrollments
+            </a>
+
+            <a href="{% url 'course_edit' item.course.id %}" class="btn btn-sm btn-outline-secondary">
               Edit
             </a>
 
-            <a href="{% url 'course_delete' course.id %}" class="btn btn-sm btn-outline-danger">
+            <a href="{% url 'course_delete' item.course.id %}" class="btn btn-sm btn-outline-danger">
               Delete
+            </a>
+          {% endif %}
+
+          {% if item.role == "student" or item.role == "ta" or item.role == "instructor" %}
+            <a href="{% url 'course_leave' item.course.id %}" class="btn btn-sm btn-outline-warning">
+              Leave Course
             </a>
           {% endif %}
         </div>
@@ -44,7 +79,7 @@
   {% endfor %}
 {% else %}
   <div class="alert alert-info">
-    You are not enrolled in any courses yet.
+    You are not enrolled in any courses yet. Join a course or create one.
   </div>
 {% endif %}
 

@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Enrollments{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1>Manage enrollments</h1>
+    <p><strong>{{ course.code }}</strong> — {{ course.title }}</p>
+    <p>Join code: <code>{{ course.join_code }}</code></p>
+
+    <table class="table mt-3">
+        <thead>
+            <tr>
+                <th>User</th>
+                <th>Email</th>
+                <th>Role</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for enrollment in enrollments %}
+            <tr>
+                <td>{{ enrollment.user.username }}</td>
+                <td>{{ enrollment.user.email }}</td>
+                <td>{{ enrollment.get_role_display }}</td>
+                <td>
+                    <a href="{% url 'enrollment_role_edit' course.id enrollment.id %}" class="btn btn-sm btn-outline-secondary">Edit role</a>
+                    <a href="{% url 'enrollment_delete' course.id enrollment.id %}" class="btn btn-sm btn-outline-danger">Remove</a>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="4">No enrollments yet.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}
