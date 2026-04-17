@@ -72,12 +72,24 @@ def dashboard(request):
 @login_required
 def course_list(request):
     if request.user.is_staff or request.user.is_superuser:
-        courses = Course.objects.all()
+        courses = Course.objects.all().order_by("code", "semester")
+        course_data = [
+            {"course": course, "role": "admin"}
+            for course in courses
+        ]
     else:
-        courses = Course.objects.filter(enrollment__user=request.user).distinct()
+        enrollments = (
+            Enrollment.objects
+            .filter(user=request.user)
+            .select_related("course")
+            .order_by("course__code", "course__semester")
+        )
+        course_data = [
+            {"course": enrollment.course, "role": enrollment.role}
+            for enrollment in enrollments
+        ]
 
-    return render(request, "course_list.html", {"courses": courses})
-
+    return render(request, "course_list.html", {"course_data": course_data})
 
 @login_required
 def course_create(request):
