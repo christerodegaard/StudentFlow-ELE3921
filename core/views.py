@@ -4,17 +4,38 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import UserCreationForm
 from django.shortcuts import get_object_or_404, redirect, render
 
-from .forms import AssignmentForm, CourseForm, NoteForm, TaskForm
+from datetime import timedelta
+from django.utils import timezone
+
+from .forms import (
+    AssignmentForm,
+    CourseForm,
+    EnrollmentRoleForm,
+    JoinCourseForm,
+    NoteForm,
+    TaskForm,
+)
 from .models import Assignment, Course, Enrollment, Note, Task
+from .permissions import user_has_course_role, user_is_course_member
 
 
 @login_required
 def dashboard(request):
-    courses = Course.objects.filter(enrollment__user=request.user)
-    tasks = Task.objects.filter(assigned_to=request.user)
+    today = timezone.localdate()
+    next_week = today + timedelta(days=7)
+
+    if request.user.is_staff or request.user.is_superuser:
+        courses = Course.objects.all()
+        tasks = Task.objects.select_related("assignment", "assignment__course", "assigned_to").all()
+    else:
+        courses = Course.objects.filter(enrollment__user=request.user).distinct()
+        tasks = Task.objects.select_related("assignment", "assignment__course", "assigned_to").filter(
+            assigned_to=request.user
+        )
 
     selected_course = request.GET.get("course")
     selected_status = request.GET.get("status")
+    selected_due_date = request.GET.get("due_date")
 
     if selected_course:
         tasks = tasks.filter(assignment__course_id=selected_course)
@@ -22,32 +43,55 @@ def dashboard(request):
     if selected_status:
         tasks = tasks.filter(status=selected_status)
 
+    if selected_due_date == "overdue":
+        tasks = tasks.filter(due_date__lt=today).exclude(status="done")
+    elif selected_due_date == "7days":
+        tasks = tasks.filter(due_date__range=[today, next_week]).exclude(status="done")
+    elif selected_due_date == "today":
+        tasks = tasks.filter(due_date=today)
+
+    overdue = tasks.filter(due_date__lt=today).exclude(status="done").order_by("due_date")
+    due_soon = tasks.filter(due_date__range=[today, next_week]).exclude(status="done").order_by("due_date")
+    todo_tasks = tasks.filter(status="todo").order_by("due_date")
+    in_progress_tasks = tasks.filter(status="doing").order_by("due_date")
+    completed_tasks = tasks.filter(status="done").order_by("-due_date")
+
     context = {
-        "tasks": tasks,
         "courses": courses,
         "selected_course": selected_course,
         "selected_status": selected_status,
+        "selected_due_date": selected_due_date,
+        "overdue": overdue,
+        "due_soon": due_soon,
+        "todo_tasks": todo_tasks,
+        "in_progress_tasks": in_progress_tasks,
+        "completed_tasks": completed_tasks,
     }
-
     return render(request, "dashboard.html", context)
-
 
 @login_required
 def course_list(request):
-    courses = Course.objects.filter(enrollment__user=request.user)
+    if request.user.is_staff or request.user.is_superuser:
+        courses = Course.objects.all()
+    else:
+        courses = Course.objects.filter(enrollment__user=request.user).distinct()
+
     return render(request, "course_list.html", {"courses": courses})
 
 
 @login_required
 def course_create(request):
-    if not request.user.is_staff:
-        messages.error(request, "You do not have permission to create courses.")
-        return redirect("course_list")
-
     if request.method == "POST":
         form = CourseForm(request.POST)
         if form.is_valid():
-            form.save()
+            course = form.save()
+
+            Enrollment.objects.get_or_create(
+                user=request.user,
+                course=course,
+                defaults={"role": "instructor"},
+            )
+
             messages.success(request, "Course created successfully.")
             return redirect("course_list")
     else:
@@ -60,8 +104,8 @@ def course_create(request):
 def course_edit(request, course_id):
     course = get_object_or_404(Course, id=course_id)
 
-    if not request.user.is_staff:
-        messages.error(request, "You do not have permission to edit this course.")
+    if not user_has_course_role(request.user, course, {"instructor"}):
+        messages.error(request, "Only instructors can edit this course.")
         return redirect("course_list")
 
     if request.method == "POST":
@@ -80,8 +124,8 @@ def course_edit(request, course_id):
 def course_delete(request, course_id):
     course = get_object_or_404(Course, id=course_id)
 
-    if not request.user.is_staff:
-        messages.error(request, "You do not have permission to delete this course.")
+    if not user_has_course_role(request.user, course, {"instructor"}):
+        messages.error(request, "Only instructors can delete this course.")
         return redirect("course_list")
 
     if request.method == "POST":
@@ -93,8 +137,157 @@ def course_delete(request, course_id):
 
 
 @login_required
+def course_join(request):
+    if request.method == "POST":
+        form = JoinCourseForm(request.POST)
+        if form.is_valid():
+            join_code = form.cleaned_data["join_code"]
+            course = Course.objects.filter(join_code=join_code).first()
+
+            if course is None:
+                form.add_error("join_code", "No course found with that join code.")
+            else:
+                enrollment, created = Enrollment.objects.get_or_create(
+                    user=request.user,
+                    course=course,
+                    defaults={"role": "student"},
+                )
+
+                if created:
+                    messages.success(request, f"You joined {course.code}.")
+                else:
+                    messages.info(request, f"You are already enrolled in {course.code}.")
+                return redirect("course_list")
+    else:
+        form = JoinCourseForm()
+
+    return render(request, "course_join.html", {"form": form})
+
+
+@login_required
+def course_leave(request, course_id):
+    course = get_object_or_404(Course, id=course_id)
+    enrollment = get_object_or_404(Enrollment, user=request.user, course=course)
+
+    if enrollment.role == "instructor":
+        other_instructors_exist = Enrollment.objects.filter(
+            course=course,
+            role="instructor",
+        ).exclude(id=enrollment.id).exists()
+
+        if not other_instructors_exist:
+            messages.error(request, "A course must have at least one instructor.")
+            return redirect("manage_enrollments", course_id=course.id)
+
+    if request.method == "POST":
+        enrollment.delete()
+        messages.success(request, f"You left {course.code}.")
+        return redirect("course_list")
+
+    return render(
+        request,
+        "confirm_delete.html",
+        {"object": enrollment, "type": "Enrollment"},
+    )
+
+
+@login_required
+def manage_enrollments(request, course_id):
+    course = get_object_or_404(Course, id=course_id)
+
+    if not user_has_course_role(request.user, course, {"instructor"}):
+        messages.error(request, "Only instructors can manage enrollments.")
+        return redirect("course_list")
+
+    enrollments = Enrollment.objects.filter(course=course).select_related("user").order_by("role", "user__username")
+    return render(
+        request,
+        "enrollment_manage.html",
+        {"course": course, "enrollments": enrollments},
+    )
+
+
+@login_required
+def enrollment_role_edit(request, course_id, enrollment_id):
+    course = get_object_or_404(Course, id=course_id)
+
+    if not user_has_course_role(request.user, course, {"instructor"}):
+        messages.error(request, "Only instructors can change roles.")
+        return redirect("course_list")
+
+    enrollment = get_object_or_404(Enrollment, id=enrollment_id, course=course)
+
+    if request.method == "POST":
+        form = EnrollmentRoleForm(request.POST, instance=enrollment)
+        if form.is_valid():
+            new_role = form.cleaned_data["role"]
+
+            if enrollment.user == request.user and enrollment.role == "instructor" and new_role != "instructor":
+                other_instructors_exist = Enrollment.objects.filter(
+                    course=course,
+                    role="instructor",
+                ).exclude(id=enrollment.id).exists()
+
+                if not other_instructors_exist:
+                    form.add_error("role", "This course must have at least one instructor.")
+                else:
+                    form.save()
+                    messages.success(request, "Enrollment role updated.")
+                    return redirect("manage_enrollments", course_id=course.id)
+            else:
+                form.save()
+                messages.success(request, "Enrollment role updated.")
+                return redirect("manage_enrollments", course_id=course.id)
+    else:
+        form = EnrollmentRoleForm(instance=enrollment)
+
+    return render(
+        request,
+        "enrollment_form.html",
+        {"course": course, "enrollment": enrollment, "form": form},
+    )
+
+
+@login_required
+def enrollment_delete(request, course_id, enrollment_id):
+    course = get_object_or_404(Course, id=course_id)
+
+    if not user_has_course_role(request.user, course, {"instructor"}):
+        messages.error(request, "Only instructors can remove enrollments.")
+        return redirect("course_list")
+
+    enrollment = get_object_or_404(Enrollment, id=enrollment_id, course=course)
+
+    if enrollment.role == "instructor":
+        other_instructors_exist = Enrollment.objects.filter(
+            course=course,
+            role="instructor",
+        ).exclude(id=enrollment.id).exists()
+
+        if not other_instructors_exist:
+            messages.error(request, "A course must have at least one instructor.")
+            return redirect("manage_enrollments", course_id=course.id)
+
+    if request.method == "POST":
+        enrollment.delete()
+        messages.success(request, "Enrollment removed.")
+        return redirect("manage_enrollments", course_id=course.id)
+
+    return render(
+        request,
+        "confirm_delete.html",
+        {"object": enrollment, "type": "Enrollment"},
+    )
+
+
+@login_required
 def assignment_list(request, course_id):
     course = get_object_or_404(Course, id=course_id)
+
+    if not user_is_course_member(request.user, course):
+        messages.error(request, "You are not enrolled in this course.")
+        return redirect("course_list")
+
     assignments = Assignment.objects.filter(course=course)
     return render(request, "assignment_list.html", {"course": course, "assignments": assignments})
 
@@ -102,6 +295,10 @@ def assignment_list(request, course_id):
 @login_required
 def assignment_create(request, course_id):
     course = get_object_or_404(Course, id=course_id)
+
+    if not user_has_course_role(request.user, course, {"ta", "instructor"}):
+        messages.error(request, "Only TAs and instructors can create assignments.")
+        return redirect("assignment_list", course_id=course.id)
 
     if request.method == "POST":
         form = AssignmentForm(request.POST)
@@ -122,6 +319,10 @@ def assignment_edit(request, assignment_id):
     assignment = get_object_or_404(Assignment, id=assignment_id)
     course = assignment.course
 
+    if not user_has_course_role(request.user, course, {"ta", "instructor"}):
+        messages.error(request, "Only TAs and instructors can edit assignments.")
+        return redirect("assignment_list", course_id=course.id)
+
     if request.method == "POST":
         form = AssignmentForm(request.POST, instance=assignment)
         if form.is_valid():
@@ -131,18 +332,26 @@ def assignment_edit(request, assignment_id):
     else:
         form = AssignmentForm(instance=assignment)
 
-    return render(request, "assignment_form.html", {"course": course, "form": form})
+    return render(
+        request,
+        "assignment_form.html",
+        {"course": course, "assignment": assignment, "form": form},
+    )
 
 
 @login_required
 def assignment_delete(request, assignment_id):
     assignment = get_object_or_404(Assignment, id=assignment_id)
-    course_id = assignment.course.id
+    course = assignment.course
+
+    if not user_has_course_role(request.user, course, {"ta", "instructor"}):
+        messages.error(request, "Only TAs and instructors can delete assignments.")
+        return redirect("assignment_list", course_id=course.id)
 
     if request.method == "POST":
         assignment.delete()
         messages.success(request, "Assignment deleted.")
-        return redirect("assignment_list", course_id=course_id)
+        return redirect("assignment_list", course_id=course.id)
 
     return render(request, "confirm_delete.html", {"object": assignment, "type": "Assignment"})
 
@@ -150,6 +359,12 @@ def assignment_delete(request, assignment_id):
 @login_required
 def task_list(request, assignment_id):
     assignment = get_object_or_404(Assignment, id=assignment_id)
+    course = assignment.course
+
+    if not user_is_course_member(request.user, course):
+        messages.error(request, "You are not enrolled in this course.")
+        return redirect("course_list")
+
     tasks = Task.objects.filter(assignment=assignment, assigned_to=request.user)
     return render(request, "task_list.html", {"assignment": assignment, "tasks": tasks})
 
@@ -157,6 +372,11 @@ def task_list(request, assignment_id):
 @login_required
 def task_create(request, assignment_id):
     assignment = get_object_or_404(Assignment, id=assignment_id)
+    course = assignment.course
+
+    if not user_is_course_member(request.user, course):
+        messages.error(request, "You are not enrolled in this course.")
+        return redirect("course_list")
 
     if request.method == "POST":
         form = TaskForm(request.POST)
@@ -269,3 +489,30 @@ def register(request):
         form = UserCreationForm()
 
     return render(request, "registration/register.html", {"form": form})
+
+@login_required
+def course_join(request):
+    if request.method == "POST":
+        form = JoinCourseForm(request.POST)
+        if form.is_valid():
+            join_code = form.cleaned_data["join_code"]
+            course = Course.objects.filter(join_code=join_code).first()
+
+            if course is None:
+                form.add_error("join_code", "No course found with that join code.")
+            else:
+                enrollment, created = Enrollment.objects.get_or_create(
+                    user=request.user,
+                    course=course,
+                    defaults={"role": "student"},
+                )
+
+                if created:
+                    messages.success(request, f"You joined {course.code}.")
+                else:
+                    messages.info(request, f"You are already enrolled in {course.code}.")
+                return redirect("course_list")
+    else:
+        form = JoinCourseForm()
+
+    return render(request, "course_join.html", {"form": form})

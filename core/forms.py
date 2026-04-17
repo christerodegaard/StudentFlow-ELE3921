@@ -1,5 +1,5 @@
 from django import forms
-from .models import Course, Assignment, Task, Note
+from .models import Assignment, Course, Enrollment, Note, Task
 
 
 class CourseForm(forms.ModelForm):
@@ -12,6 +12,21 @@ class CourseForm(forms.ModelForm):
             "semester": forms.TextInput(attrs={"class": "form-control"}),
         }
 
+    def clean_code(self):
+        return self.cleaned_data["code"].strip().upper()
+
+    def clean_title(self):
+        title = self.cleaned_data["title"].strip()
+        if not title:
+            raise forms.ValidationError("Title is required.")
+        return title
+
+    def clean_semester(self):
+        semester = self.cleaned_data["semester"].strip()
+        if not semester:
+            raise forms.ValidationError("Semester is required.")
+        return semester
+
 
 class AssignmentForm(forms.ModelForm):
     class Meta:
@@ -22,12 +37,6 @@ class AssignmentForm(forms.ModelForm):
             "status": forms.Select(attrs={"class": "form-select"}),
             "due_date": forms.DateInput(attrs={"class": "form-control", "type": "date"}),
         }
-
-    def clean_title(self):
-        title = self.cleaned_data["title"].strip()
-        if not title:
-            raise forms.ValidationError("Title is required.")
-        return title
 
 
 class TaskForm(forms.ModelForm):
@@ -50,8 +59,27 @@ class NoteForm(forms.ModelForm):
             "content": forms.Textarea(attrs={"class": "form-control", "rows": 3}),
         }
 
-    def clean_content(self):
-        content = self.cleaned_data["content"].strip()
-        if not content:
-            raise forms.ValidationError("Note content cannot be empty.")
-        return content
+
+class JoinCourseForm(forms.Form):
+    join_code = forms.CharField(
+        max_length=8,
+        label="Course join code",
+        widget=forms.TextInput(
+            attrs={
+                "class": "form-control",
+                "placeholder": "Enter join code",
+            }
+        ),
+    )
+
+    def clean_join_code(self):
+        return self.cleaned_data["join_code"].strip().upper()
+
+
+class EnrollmentRoleForm(forms.ModelForm):
+    class Meta:
+        model = Enrollment
+        fields = ["role"]
+        widgets = {
+            "role": forms.Select(attrs={"class": "form-select"}),
+        }

@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+
+{% block title %}Join Course{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1>Join course</h1>
+    <form method="post" class="mt-3">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit" class="btn btn-primary">Join</button>
+    </form>
+</div>
+{% endblock %}
