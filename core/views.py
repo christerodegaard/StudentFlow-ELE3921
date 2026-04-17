@@ -26,22 +26,27 @@ def dashboard(request):
 
     if request.user.is_staff or request.user.is_superuser:
         courses = Course.objects.all().order_by("code", "semester")
-        tasks = Task.objects.select_related(
+
+        base_tasks = Task.objects.select_related(
             "assignment",
             "assignment__course",
             "assigned_to",
         ).all()
     else:
         courses = Course.objects.filter(enrollment__user=request.user).distinct().order_by("code", "semester")
-        tasks = Task.objects.select_related(
+
+        base_tasks = Task.objects.select_related(
             "assignment",
             "assignment__course",
             "assigned_to",
-        ).filter(assigned_to=request.user)
+        ).filter(assignment__course__enrollment__user=request.user).distinct()
 
     selected_course = request.GET.get("course", "")
     selected_status = request.GET.get("status", "")
     selected_due_date = request.GET.get("due_date", "")
+
+    # Tasks for dashboard sections / counters
+    tasks = base_tasks
 
     if selected_course:
         tasks = tasks.filter(assignment__course_id=selected_course)
@@ -62,9 +67,17 @@ def dashboard(request):
     in_progress_tasks = tasks.filter(status="doing").order_by("due_date", "priority")
     completed_tasks = tasks.filter(status="done").order_by("-due_date")
 
+    # Separate queryset for course progress
+    summary_tasks = base_tasks
+    summary_courses = courses
+
+    if selected_course:
+        summary_courses = courses.filter(id=selected_course)
+        summary_tasks = summary_tasks.filter(assignment__course_id=selected_course)
+
     course_summaries = []
-    for course in courses:
-        course_tasks = tasks.filter(assignment__course=course)
+    for course in summary_courses:
+        course_tasks = summary_tasks.filter(assignment__course=course)
         total = course_tasks.count()
         done_count = course_tasks.filter(status="done").count()
         doing_count = course_tasks.filter(status="doing").count()
