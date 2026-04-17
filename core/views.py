@@ -490,29 +490,3 @@ def register(request):
 
     return render(request, "registration/register.html", {"form": form})
 
-@login_required
-def course_join(request):
-    if request.method == "POST":
-        form = JoinCourseForm(request.POST)
-        if form.is_valid():
-            join_code = form.cleaned_data["join_code"]
-            course = Course.objects.filter(join_code=join_code).first()
-
-            if course is None:
-                form.add_error("join_code", "No course found with that join code.")
-            else:
-                enrollment, created = Enrollment.objects.get_or_create(
-                    user=request.user,
-                    course=course,
-                    defaults={"role": "student"},
-                )
-
-                if created:
-                    messages.success(request, f"You joined {course.code}.")
-                else:
-                    messages.info(request, f"You are already enrolled in {course.code}.")
-                return redirect("course_list")
-    else:
-        form = JoinCourseForm()
-
-    return render(request, "course_join.html", {"form": form})
