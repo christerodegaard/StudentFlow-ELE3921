@@ -21,9 +21,11 @@ from .permissions import user_has_course_role, user_is_course_member
 
 @login_required
 def dashboard(request):
+    # Main dashboard overview for tasks and course progress
     today = timezone.localdate()
     next_week = today + timedelta(days=7)
 
+    # Admin users can see all courses and tasks
     if request.user.is_staff or request.user.is_superuser:
         courses = Course.objects.all().order_by("code", "semester")
 
@@ -32,22 +34,29 @@ def dashboard(request):
             "assignment__course",
             "assigned_to",
         ).all()
+
+    # Regular users only see courses they are enrolled in
     else:
-        courses = Course.objects.filter(enrollment__user=request.user).distinct().order_by("code", "semester")
+        courses = Course.objects.filter(
+            enrollment__user=request.user
+        ).distinct().order_by("code", "semester")
 
         base_tasks = Task.objects.select_related(
             "assignment",
             "assignment__course",
             "assigned_to",
-        ).filter(assignment__course__enrollment__user=request.user).distinct()
+        ).filter(
+            assignment__course__enrollment__user=request.user
+        ).distinct()
 
+    # Read selected dashboard filters from the URL query string
     selected_course = request.GET.get("course", "")
     selected_status = request.GET.get("status", "")
     selected_due_date = request.GET.get("due_date", "")
 
-    # Tasks for dashboard sections / counters
     tasks = base_tasks
 
+    # Apply optional dashboard filters
     if selected_course:
         tasks = tasks.filter(assignment__course_id=selected_course)
 
@@ -61,13 +70,14 @@ def dashboard(request):
     elif selected_due_date == "overdue":
         tasks = tasks.filter(due_date__lt=today).exclude(status="done")
 
+    # Split tasks into sections shown on the dashboard
     overdue = tasks.filter(due_date__lt=today).exclude(status="done").order_by("due_date")
     due_soon = tasks.filter(due_date__range=[today, next_week]).exclude(status="done").order_by("due_date")
     todo_tasks = tasks.filter(status="todo").order_by("due_date", "priority")
     in_progress_tasks = tasks.filter(status="doing").order_by("due_date", "priority")
     completed_tasks = tasks.filter(status="done").order_by("-due_date")
 
-    # Separate queryset for course progress
+    # Separate queryset used for course progress cards
     summary_tasks = base_tasks
     summary_courses = courses
 
@@ -75,6 +85,7 @@ def dashboard(request):
         summary_courses = courses.filter(id=selected_course)
         summary_tasks = summary_tasks.filter(assignment__course_id=selected_course)
 
+    # Build progress data for each course
     course_summaries = []
     for course in summary_courses:
         course_tasks = summary_tasks.filter(assignment__course=course)
@@ -115,9 +126,10 @@ def dashboard(request):
     }
     return render(request, "dashboard.html", context)
 
-@login_required
 
+@login_required
 def course_list(request):
+    # Admin users see all courses, while regular users see only enrolled courses
     if request.user.is_staff or request.user.is_superuser:
         courses = Course.objects.all().order_by("code", "semester")
         course_data = [
@@ -138,8 +150,10 @@ def course_list(request):
 
     return render(request, "course_list.html", {"course_data": course_data})
 
+
 @login_required
 def course_create(request):
+    # Course creators are automatically enrolled as instructors
     if request.method == "POST":
         form = CourseForm(request.POST)
         if form.is_valid():
@@ -163,6 +177,7 @@ def course_create(request):
 def course_edit(request, course_id):
     course = get_object_or_404(Course, id=course_id)
 
+    # Only instructors can edit course details
     if not user_has_course_role(request.user, course, {"instructor"}):
         messages.error(request, "Only instructors can edit this course.")
         return redirect("course_list")
@@ -183,6 +198,7 @@ def course_edit(request, course_id):
 def course_delete(request, course_id):
     course = get_object_or_404(Course, id=course_id)
 
+    # Only instructors can delete courses
     if not user_has_course_role(request.user, course, {"instructor"}):
         messages.error(request, "Only instructors can delete this course.")
         return redirect("course_list")
@@ -197,6 +213,7 @@ def course_delete(request, course_id):
 
 @login_required
 def course_join(request):
+    # Join course feature using the course join code
     if request.method == "POST":
         form = JoinCourseForm(request.POST)
         if form.is_valid():
@@ -228,6 +245,7 @@ def course_leave(request, course_id):
     course = get_object_or_404(Course, id=course_id)
     enrollment = get_object_or_404(Enrollment, user=request.user, course=course)
 
+    # Prevent removing the final instructor from a course
     if enrollment.role == "instructor":
         other_instructors_exist = Enrollment.objects.filter(
             course=course,
@@ -254,11 +272,18 @@ def course_leave(request, course_id):
 def manage_enrollments(request, course_id):
     course = get_object_or_404(Course, id=course_id)
 
+    # Enrollment management is limited to instructors
     if not user_has_course_role(request.user, course, {"instructor"}):
         messages.error(request, "Only instructors can manage enrollments.")
         return redirect("course_list")
 
-    enrollments = Enrollment.objects.filter(course=course).select_related("user").order_by("role", "user__username")
+    enrollments = (
+        Enrollment.objects
+        .filter(course=course)
+        .select_related("user")
+        .order_by("role", "user__username")
+    )
+
     return render(
         request,
         "enrollment_manage.html",
@@ -270,6 +295,7 @@ def manage_enrollments(request, course_id):
 def enrollment_role_edit(request, course_id, enrollment_id):
     course = get_object_or_404(Course, id=course_id)
 
+    # Only instructors can change enrollment roles
     if not user_has_course_role(request.user, course, {"instructor"}):
         messages.error(request, "Only instructors can change roles.")
         return redirect("course_list")
@@ -281,6 +307,7 @@ def enrollment_role_edit(request, course_id, enrollment_id):
         if form.is_valid():
             new_role = form.cleaned_data["role"]
 
+            # Prevent the current user from removing the last instructor role
             if enrollment.user == request.user and enrollment.role == "instructor" and new_role != "instructor":
                 other_instructors_exist = Enrollment.objects.filter(
                     course=course,
@@ -311,12 +338,14 @@ def enrollment_role_edit(request, course_id, enrollment_id):
 def enrollment_delete(request, course_id, enrollment_id):
     course = get_object_or_404(Course, id=course_id)
 
+    # Only instructors can remove enrollments from a course
     if not user_has_course_role(request.user, course, {"instructor"}):
         messages.error(request, "Only instructors can remove enrollments.")
         return redirect("course_list")
 
     enrollment = get_object_or_404(Enrollment, id=enrollment_id, course=course)
 
+    # Keep at least one instructor assigned to each course
     if enrollment.role == "instructor":
         other_instructors_exist = Enrollment.objects.filter(
             course=course,
@@ -343,6 +372,7 @@ def enrollment_delete(request, course_id, enrollment_id):
 def assignment_list(request, course_id):
     course = get_object_or_404(Course, id=course_id)
 
+    # Users must be enrolled to view course assignments
     if not user_is_course_member(request.user, course):
         messages.error(request, "You are not enrolled in this course.")
         return redirect("course_list")
@@ -355,6 +385,7 @@ def assignment_list(request, course_id):
 def assignment_create(request, course_id):
     course = get_object_or_404(Course, id=course_id)
 
+    # Only teaching roles can create assignments
     if not user_has_course_role(request.user, course, {"ta", "instructor"}):
         messages.error(request, "Only TAs and instructors can create assignments.")
         return redirect("assignment_list", course_id=course.id)
@@ -378,6 +409,7 @@ def assignment_edit(request, assignment_id):
     assignment = get_object_or_404(Assignment, id=assignment_id)
     course = assignment.course
 
+    # Only teaching roles can edit assignments
     if not user_has_course_role(request.user, course, {"ta", "instructor"}):
         messages.error(request, "Only TAs and instructors can edit assignments.")
         return redirect("assignment_list", course_id=course.id)
@@ -403,6 +435,7 @@ def assignment_delete(request, assignment_id):
     assignment = get_object_or_404(Assignment, id=assignment_id)
     course = assignment.course
 
+    # Only teaching roles can delete assignments
     if not user_has_course_role(request.user, course, {"ta", "instructor"}):
         messages.error(request, "Only TAs and instructors can delete assignments.")
         return redirect("assignment_list", course_id=course.id)
@@ -420,6 +453,7 @@ def task_list(request, assignment_id):
     assignment = get_object_or_404(Assignment, id=assignment_id)
     course = assignment.course
 
+    # Users must be enrolled before viewing tasks for an assignment
     if not user_is_course_member(request.user, course):
         messages.error(request, "You are not enrolled in this course.")
         return redirect("course_list")
@@ -433,6 +467,7 @@ def task_create(request, assignment_id):
     assignment = get_object_or_404(Assignment, id=assignment_id)
     course = assignment.course
 
+    # Only enrolled users can create tasks for this assignment
     if not user_is_course_member(request.user, course):
         messages.error(request, "You are not enrolled in this course.")
         return redirect("course_list")
@@ -454,6 +489,7 @@ def task_create(request, assignment_id):
 
 @login_required
 def task_detail(request, task_id):
+    # Users only see their own tasks
     task = get_object_or_404(Task, id=task_id, assigned_to=request.user)
     notes = Note.objects.filter(task=task)
     return render(request, "task_detail.html", {"task": task, "notes": notes})
@@ -461,6 +497,7 @@ def task_detail(request, task_id):
 
 @login_required
 def task_edit(request, task_id):
+    # Users only edit their own tasks
     task = get_object_or_404(Task, id=task_id, assigned_to=request.user)
 
     if request.method == "POST":
@@ -477,6 +514,7 @@ def task_edit(request, task_id):
 
 @login_required
 def task_delete(request, task_id):
+    # Users only delete their own tasks
     task = get_object_or_404(Task, id=task_id, assigned_to=request.user)
 
     if request.method == "POST":
@@ -490,6 +528,7 @@ def task_delete(request, task_id):
 
 @login_required
 def note_create(request, task_id):
+    # Notes are attached to the logged-in user's task
     task = get_object_or_404(Task, id=task_id, assigned_to=request.user)
 
     if request.method == "POST":
@@ -509,6 +548,7 @@ def note_create(request, task_id):
 
 @login_required
 def note_edit(request, note_id):
+    # Users only edit notes they created
     note = get_object_or_404(Note, id=note_id, author=request.user)
 
     if request.method == "POST":
@@ -525,6 +565,7 @@ def note_edit(request, note_id):
 
 @login_required
 def note_delete(request, note_id):
+    # Users only delete notes they created
     note = get_object_or_404(Note, id=note_id, author=request.user)
     task_id = note.task.id
 
@@ -537,6 +578,7 @@ def note_delete(request, note_id):
 
 
 def register(request):
+    # Uses Django's built-in signup form
     if request.method == "POST":
         form = UserCreationForm(request.POST)
         if form.is_valid():
@@ -548,4 +590,3 @@ def register(request):
         form = UserCreationForm()
 
     return render(request, "registration/register.html", {"form": form})
-

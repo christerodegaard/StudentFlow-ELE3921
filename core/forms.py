@@ -2,25 +2,31 @@ from django import forms
 from .models import Assignment, Course, Enrollment, Note, Task
 
 
+# form for creating and editing courses
+# uses ModelForm to automatically map fields from the Course model
 class CourseForm(forms.ModelForm):
     class Meta:
         model = Course
         fields = ["code", "title", "semester"]
         widgets = {
+            # Bootstrap styling for inputs
             "code": forms.TextInput(attrs={"class": "form-control"}),
             "title": forms.TextInput(attrs={"class": "form-control"}),
             "semester": forms.TextInput(attrs={"class": "form-control"}),
         }
 
+    # ensure course code is uppercase and trimmed
     def clean_code(self):
         return self.cleaned_data["code"].strip().upper()
 
+    # basic validation to prevent empty titles
     def clean_title(self):
         title = self.cleaned_data["title"].strip()
         if not title:
             raise forms.ValidationError("Title is required.")
         return title
 
+    # Basic validation for semester field
     def clean_semester(self):
         semester = self.cleaned_data["semester"].strip()
         if not semester:
@@ -28,6 +34,7 @@ class CourseForm(forms.ModelForm):
         return semester
 
 
+# form for assignments linked to a course
 class AssignmentForm(forms.ModelForm):
     class Meta:
         model = Assignment
@@ -35,10 +42,12 @@ class AssignmentForm(forms.ModelForm):
         widgets = {
             "title": forms.TextInput(attrs={"class": "form-control"}),
             "status": forms.Select(attrs={"class": "form-select"}),
+            # Uses HTML date input for better UX
             "due_date": forms.DateInput(attrs={"class": "form-control", "type": "date"}),
         }
 
 
+# form for tasks inside an assignment
 class TaskForm(forms.ModelForm):
     class Meta:
         model = Task
@@ -51,15 +60,19 @@ class TaskForm(forms.ModelForm):
         }
 
 
+# form for adding notes to a task
 class NoteForm(forms.ModelForm):
     class Meta:
         model = Note
         fields = ["content"]
         widgets = {
+            # Textarea for longer text input
             "content": forms.Textarea(attrs={"class": "form-control", "rows": 3}),
         }
 
 
+# form for joining a course using a join code
+# connects to the dynamic join code logic in Course model
 class JoinCourseForm(forms.Form):
     join_code = forms.CharField(
         max_length=8,
@@ -72,10 +85,12 @@ class JoinCourseForm(forms.Form):
         ),
     )
 
+    # normalize input (trim + uppercase) before lookup
     def clean_join_code(self):
         return self.cleaned_data["join_code"].strip().upper()
 
 
+# form for instructors to change a user's role in a course
 class EnrollmentRoleForm(forms.ModelForm):
     class Meta:
         model = Enrollment
