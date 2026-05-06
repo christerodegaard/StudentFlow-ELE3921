@@ -7,7 +7,7 @@ import string
 # Generates a random code used for joining a course
 def generate_join_code(length=8):
     alphabet = string.ascii_uppercase + string.digits
-    return "".join(secrets.choice(alphabet) for _ in range(length))
+    return "".join(secrets.choice(alphabet) for i in range(length))
 
 
 # Represents a course with basic info and a join code
@@ -30,9 +30,9 @@ class Course(models.Model):
         ]
 
     def save(self, *args, **kwargs):
-        # Dynamic join code generation
-        # If no join code is set, generate one automatically
-        # Ensures the code is unique before saving
+        # dynamic join code generation
+        # if no join code is set, generate one automatically
+        # ensures the code is unique before saving
         if not self.join_code:
             code = generate_join_code()
             while Course.objects.filter(join_code=code).exclude(pk=self.pk).exists():
@@ -44,7 +44,7 @@ class Course(models.Model):
         return f"{self.code} - {self.title} ({self.semester})"
 
 
-# Links a user to a course with a specific role
+# links a user to a course with a specific role
 class Enrollment(models.Model):
     ROLE_CHOICES = [
         ("student", "Student"),
