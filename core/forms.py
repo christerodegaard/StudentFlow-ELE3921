@@ -38,14 +38,13 @@ class CourseForm(forms.ModelForm):
 class AssignmentForm(forms.ModelForm):
     class Meta:
         model = Assignment
-        fields = ["title", "status", "due_date"]
+        fields = ["title", "description", "status", "due_date"]
         widgets = {
             "title": forms.TextInput(attrs={"class": "form-control"}),
+            "description": forms.Textarea(attrs={"class": "form-control", "rows": 3}),
             "status": forms.Select(attrs={"class": "form-select"}),
-            # Uses HTML date input for better UX
             "due_date": forms.DateInput(attrs={"class": "form-control", "type": "date"}),
         }
-
 
 # form for tasks inside an assignment
 class TaskForm(forms.ModelForm):

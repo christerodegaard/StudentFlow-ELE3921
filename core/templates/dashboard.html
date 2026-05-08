@@ -99,28 +99,37 @@
                 <div class="row g-3">
                     {% for summary in course_summaries %}
                         <div class="col-md-6">
-                            <div class="border rounded p-3 h-100">
-                                <h3 class="h5 mb-2">
-                                    {{ summary.course.code }} — {{ summary.course.title }}
-                                </h3>
+                            <!-- Clickable course progress card -->
+                            <a href="{% url 'assignment_list' summary.course.id %}" class="text-decoration-none text-dark">
+                                <div class="border rounded p-3 h-100">
+                                    <h3 class="h5 mb-2">
+                                        {{ summary.course.code }} — {{ summary.course.title }}
+                                    </h3>
 
-                                <p class="mb-2 text-muted">
-                                    {{ summary.progress_percent }}% complete
-                                </p>
+                                    <p class="mb-2 text-muted">
+                                        {{ summary.progress_percent }}% complete
+                                    </p>
 
-                                <div class="progress mb-3" role="progressbar" aria-valuenow="{{ summary.progress_percent }}" aria-valuemin="0" aria-valuemax="100">
-                                    <div class="progress-bar" style="width: {{ summary.progress_percent }}%;">
-                                        {{ summary.progress_percent }}%
+                                    <div
+                                        class="progress mb-3"
+                                        role="progressbar"
+                                        aria-valuenow="{{ summary.progress_percent }}"
+                                        aria-valuemin="0"
+                                        aria-valuemax="100"
+                                    >
+                                        <div class="progress-bar" style="width: {{ summary.progress_percent }}%;">
+                                            {{ summary.progress_percent }}%
+                                        </div>
                                     </div>
-                                </div>
 
-                                <ul class="list-unstyled mb-0 small text-muted">
-                                    <li>Total tasks: {{ summary.total }}</li>
-                                    <li>Completed: {{ summary.done }}</li>
-                                    <li>In progress: {{ summary.doing }}</li>
-                                    <li>Overdue: {{ summary.overdue }}</li>
-                                </ul>
-                            </div>
+                                    <ul class="list-unstyled mb-0 small text-muted">
+                                        <li>Total tasks: {{ summary.total }}</li>
+                                        <li>Completed: {{ summary.done }}</li>
+                                        <li>In progress: {{ summary.doing }}</li>
+                                        <li>Overdue: {{ summary.overdue }}</li>
+                                    </ul>
+                                </div>
+                            </a>
                         </div>
                     {% endfor %}
                 </div>
@@ -139,7 +148,11 @@
                     {% if overdue %}
                         {% for task in overdue %}
                             <div class="border-bottom py-3">
-                                <h3 class="h5 mb-1">{{ task.title }}</h3>
+                                <h3 class="h5 mb-1">
+                                    <a href="{% url 'task_detail' task.id %}">
+                                        {{ task.title }}
+                                    </a>
+                                </h3>
                                 <p class="mb-0 text-muted">
                                     Due: {{ task.due_date }} |
                                     Assignment: {{ task.assignment.title }} |
@@ -162,7 +175,11 @@
                     {% if due_soon %}
                         {% for task in due_soon %}
                             <div class="border-bottom py-3">
-                                <h3 class="h5 mb-1">{{ task.title }}</h3>
+                                <h3 class="h5 mb-1">
+                                    <a href="{% url 'task_detail' task.id %}">
+                                        {{ task.title }}
+                                    </a>
+                                </h3>
                                 <p class="mb-0 text-muted">
                                     Due: {{ task.due_date }} |
                                     Assignment: {{ task.assignment.title }} |
@@ -185,7 +202,11 @@
                     {% if todo_tasks %}
                         {% for task in todo_tasks %}
                             <div class="border-bottom py-3">
-                                <h3 class="h5 mb-1">{{ task.title }}</h3>
+                                <h3 class="h5 mb-1">
+                                    <a href="{% url 'task_detail' task.id %}">
+                                        {{ task.title }}
+                                    </a>
+                                </h3>
                                 <p class="mb-0 text-muted">
                                     Due: {{ task.due_date|default:"No due date" }} |
                                     Assignment: {{ task.assignment.title }} |
@@ -208,7 +229,11 @@
                     {% if in_progress_tasks %}
                         {% for task in in_progress_tasks %}
                             <div class="border-bottom py-3">
-                                <h3 class="h5 mb-1">{{ task.title }}</h3>
+                                <h3 class="h5 mb-1">
+                                    <a href="{% url 'task_detail' task.id %}">
+                                        {{ task.title }}
+                                    </a>
+                                </h3>
                                 <p class="mb-0 text-muted">
                                     Due: {{ task.due_date|default:"No due date" }} |
                                     Assignment: {{ task.assignment.title }} |
@@ -231,7 +256,11 @@
                     {% if completed_tasks %}
                         {% for task in completed_tasks %}
                             <div class="border-bottom py-3">
-                                <h3 class="h5 mb-1">{{ task.title }}</h3>
+                                <h3 class="h5 mb-1">
+                                    <a href="{% url 'task_detail' task.id %}">
+                                        {{ task.title }}
+                                    </a>
+                                </h3>
                                 <p class="mb-0 text-muted">
                                     Due: {{ task.due_date|default:"No due date" }} |
                                     Assignment: {{ task.assignment.title }} |

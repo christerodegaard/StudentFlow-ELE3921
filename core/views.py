@@ -154,7 +154,12 @@ def course_list(request):
 
 @login_required
 def course_create(request):
-    # course creators are automatically enrolled as instructors
+    # Only staff/admin users can create courses.
+    # Students join existing courses through join codes.
+    if not request.user.is_staff and not request.user.is_superuser:
+        messages.error(request, "Only admins can create courses.")
+        return redirect("course_list")
+
     if request.method == "POST":
         form = CourseForm(request.POST)
         if form.is_valid():
@@ -172,7 +177,6 @@ def course_create(request):
         form = CourseForm()
 
     return render(request, "course_form.html", {"form": form})
-
 
 @login_required
 def course_edit(request, course_id):

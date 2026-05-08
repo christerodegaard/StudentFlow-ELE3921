@@ -87,6 +87,7 @@ class Assignment(models.Model):
 
     course = models.ForeignKey(Course, on_delete=models.CASCADE)
     title = models.CharField(max_length=200)
+    description = models.TextField(blank=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="not_started")
     due_date = models.DateField(null=True, blank=True)
 
