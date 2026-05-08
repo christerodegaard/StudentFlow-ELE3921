@@ -3,7 +3,7 @@ from django.db import models
 import secrets
 import string
 
-
+# Dynamic join code generation for course enrollment. 
 # Generates a random code used for joining a course
 def generate_join_code(length=8):
     alphabet = string.ascii_uppercase + string.digits
@@ -29,6 +29,7 @@ class Course(models.Model):
             )
         ]
 
+        # AI-assisted implementation for automatic join code generation.
     def save(self, *args, **kwargs):
         # dynamic join code generation
         # if no join code is set, generate one automatically
