@@ -525,7 +525,10 @@ def task_detail(request, task_id):
 @login_required
 def task_edit(request, task_id):
     # users only edit their own tasks
-    task = get_object_or_404(Task, id=task_id, assigned_to=request.user)
+    task = get_object_or_404(Task, id=task_id)
+    if not user_is_course_member(request.user, task.assignment.course):
+        messages.error(request, "You are not enrolled in this course.")
+        return redirect("course_list")
 
     if request.method == "POST":
         form = TaskForm(request.POST, instance=task)
@@ -542,7 +545,10 @@ def task_edit(request, task_id):
 @login_required
 def task_delete(request, task_id):
     # users only delete their own tasks
-    task = get_object_or_404(Task, id=task_id, assigned_to=request.user)
+    task = get_object_or_404(Task, id=task_id)
+    if not user_is_course_member(request.user, task.assignment.course):
+        messages.error(request, "You are not enrolled in this course.")
+        return redirect("course_list")
 
     if request.method == "POST":
         assignment_id = task.assignment.id
