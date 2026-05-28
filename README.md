@@ -127,3 +127,4 @@ AI tools were used during parts of the development process for brainstorming, de
 - [Christer Ødegaard](https://github.com/christerodegaard)
 - [Mahdi Shahbazi](https://github.com/Mahdiibazi)
 - [Mohid Kashif Hussain](https://github.com/mohidhussain0504)
+
