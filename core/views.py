@@ -48,7 +48,6 @@ def dashboard(request):
             "assigned_to",
         ).filter(
             assignment__course__enrollment__user=request.user,
-            assigned_to=request.user,  # keeping dashboard and course progress user-specific
         ).distinct()
 
     # read selected dashboard filters from the url query string
