@@ -14,8 +14,9 @@ from .forms import (
     JoinCourseForm,
     NoteForm,
     TaskForm,
+    PersonalNoteForm
 )
-from .models import Assignment, Course, Enrollment, Note, Task
+from .models import Assignment, Course, Enrollment, Note, Task, PersonalNote
 from .permissions import user_has_course_role, user_is_course_member
 
 
@@ -215,10 +216,10 @@ def course_delete(request, course_id):
 
     return render(request, "confirm_delete.html", {"object": course, "type": "Course"})
 
-
+# Handles enrollment through course join codes.
+# AI-assisted exploration was used during early implementation ideas.
 @login_required
 def course_join(request):
-    # join course feature using the course join code
     if request.method == "POST":
         form = JoinCourseForm(request.POST)
         if form.is_valid():
@@ -463,7 +464,12 @@ def task_list(request, assignment_id):
         messages.error(request, "You are not enrolled in this course.")
         return redirect("course_list")
 
-    tasks = Task.objects.filter(assignment=assignment, assigned_to=request.user)
+    tasks = (
+        Task.objects
+        .filter(assignment=assignment)
+        .select_related("assigned_to")
+        .order_by("due_date", "priority")
+    )
     return render(request, "task_list.html", {"assignment": assignment, "tasks": tasks})
 
 
@@ -495,8 +501,25 @@ def task_create(request, assignment_id):
 @login_required
 def task_detail(request, task_id):
     # users only see their own tasks
-    task = get_object_or_404(Task, id=task_id, assigned_to=request.user)
-    notes = Note.objects.filter(task=task)
+    task = get_object_or_404(
+        Task.objects.select_related(
+            "assignment",
+            "assignment__course",
+            "assigned_to",
+        ),
+        id=task_id,
+    )
+
+    if not user_is_course_member(request.user, task.assignment.course):
+        messages.error(request, "You are not enrolled in this course.")
+        return redirect("course_list")
+
+    notes = (
+        Note.objects
+        .filter(task=task)
+        .select_related("author")
+        .order_by("-created_at")
+    )
     return render(request, "task_detail.html", {"task": task, "notes": notes})
 
 
@@ -534,7 +557,17 @@ def task_delete(request, task_id):
 @login_required
 def note_create(request, task_id):
     # notes are attached to the logged-in user's task
-    task = get_object_or_404(Task, id=task_id, assigned_to=request.user)
+    task = get_object_or_404(
+        Task.objects.select_related(
+            "assignment",
+            "assignment__course",
+        ),
+        id=task_id,
+    )
+
+    if not user_is_course_member(request.user, task.assignment.course):
+        messages.error(request, "You are not enrolled in this course.")
+        return redirect("course_list")
 
     if request.method == "POST":
         form = NoteForm(request.POST)
@@ -554,7 +587,17 @@ def note_create(request, task_id):
 @login_required
 def note_edit(request, note_id):
     # users only edit notes they created
-    note = get_object_or_404(Note, id=note_id, author=request.user)
+    note = get_object_or_404(Note, id=note_id)
+
+    course = note.task.assignment.course
+
+    if (
+        note.author != request.user
+        and not user_has_course_role(request.user, course, {"ta", "instructor"})
+        and not request.user.is_staff
+        and not request.user.is_superuser
+    ):
+        return redirect("task_detail", task_id=note.task.id)
 
     if request.method == "POST":
         form = NoteForm(request.POST, instance=note)
@@ -571,7 +614,18 @@ def note_edit(request, note_id):
 @login_required
 def note_delete(request, note_id):
     # users only delete notes they created
-    note = get_object_or_404(Note, id=note_id, author=request.user)
+    note = get_object_or_404(Note, id=note_id)
+
+    course = note.task.assignment.course
+
+    if (
+        note.author != request.user
+        and not user_has_course_role(request.user, course, {"ta", "instructor"})
+        and not request.user.is_staff
+        and not request.user.is_superuser
+    ):
+        return redirect("task_detail", task_id=note.task.id)
+
     task_id = note.task.id
 
     if request.method == "POST":
@@ -595,3 +649,62 @@ def register(request):
         form = UserCreationForm()
 
     return render(request, "registration/register.html", {"form": form})
+
+@login_required
+def personal_note_list(request):
+    # personal notes belong only to the logged-in user
+    notes = (
+        PersonalNote.objects
+        .filter(author=request.user)
+        .select_related("course")
+        .order_by("-created_at")
+    )
+
+    return render(request, "personal_note_list.html", {"notes": notes})
+
+
+@login_required
+def personal_note_create(request):
+    # students can create private notes linked to a course
+    if request.method == "POST":
+        form = PersonalNoteForm(request.POST, user=request.user)
+        if form.is_valid():
+            note = form.save(commit=False)
+            note.author = request.user
+            note.save()
+            messages.success(request, "Personal note created.")
+            return redirect("personal_note_list")
+    else:
+        form = PersonalNoteForm(user=request.user)
+
+    return render(request, "personal_note_form.html", {"form": form})
+
+
+@login_required
+def personal_note_edit(request, note_id):
+    # users only edit their own personal notes
+    note = get_object_or_404(PersonalNote, id=note_id, author=request.user)
+
+    if request.method == "POST":
+        form = PersonalNoteForm(request.POST, instance=note, user=request.user)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Personal note updated.")
+            return redirect("personal_note_list")
+    else:
+        form = PersonalNoteForm(instance=note, user=request.user)
+
+    return render(request, "personal_note_form.html", {"form": form, "note": note})
+
+
+@login_required
+def personal_note_delete(request, note_id):
+    # users only delete their own personal notes
+    note = get_object_or_404(PersonalNote, id=note_id, author=request.user)
+
+    if request.method == "POST":
+        note.delete()
+        messages.success(request, "Personal note deleted.")
+        return redirect("personal_note_list")
+
+    return render(request, "confirm_delete.html", {"object": note, "type": "Personal note"})

@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<!-- Personal notes give students a private space for course reflections -->
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h1 class="mb-0">Personal Notes</h1>
+
+  <a href="{% url 'personal_note_create' %}" class="btn btn-primary">
+    + Add Note
+  </a>
+</div>
+
+{% if notes %}
+  <div class="row g-4">
+    {% for note in notes %}
+      <div class="col-md-6">
+        <div class="card shadow-sm h-100">
+          <div class="card-body">
+
+            <h5 class="card-title">
+              {{ note.title }}
+            </h5>
+
+            {% if note.course %}
+              <p class="text-muted mb-2">
+                {{ note.course.code }} — {{ note.course.title }}
+              </p>
+            {% endif %}
+
+            <div class="border rounded p-3 bg-light mb-3" style="white-space: pre-line; line-height: 1.7;">
+              {{ note.content|urlize }}
+            </div>
+
+            <p class="text-muted small mb-3">
+              Created: {{ note.created_at }}
+            </p>
+
+            <a href="{% url 'personal_note_edit' note.id %}" class="btn btn-sm btn-outline-secondary">
+              Edit
+            </a>
+
+            <a href="{% url 'personal_note_delete' note.id %}" class="btn btn-sm btn-outline-danger">
+              Delete
+            </a>
+
+          </div>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="alert alert-info shadow-sm">
+    You have not created any personal notes yet.
+  </div>
+{% endif %}
+
+{% endblock %}

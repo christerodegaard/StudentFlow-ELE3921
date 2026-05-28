@@ -6,15 +6,92 @@
 
 <div class="card shadow-sm" style="max-width: 700px;">
   <div class="card-body">
+
+    <p class="text-muted mb-4">
+      Create an account to join courses, manage assignments, and track study progress.
+    </p>
+
     <form method="post">
       {% csrf_token %}
 
-      <!-- Uses Django UserCreationForm rendering -->
-      {{ form.as_p }}
+      {% if form.errors %}
+        <div class="alert alert-danger">
+          Please correct the errors below.
+        </div>
+      {% endif %}
 
-      <button type="submit" class="btn btn-primary">Sign Up</button>
-      <a href="{% url 'login' %}" class="btn btn-outline-secondary">Back to Login</a>
+      <!-- Uses Django UserCreationForm fields with Bootstrap styling -->
+
+      <div class="mb-3">
+        <label class="form-label" for="{{ form.username.id_for_label }}">
+          Username
+        </label>
+
+        {{ form.username }}
+
+        {% if form.username.help_text %}
+          <div class="form-text">
+            {{ form.username.help_text }}
+          </div>
+        {% endif %}
+
+        {% if form.username.errors %}
+          <div class="text-danger small mt-1">
+            {{ form.username.errors }}
+          </div>
+        {% endif %}
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label" for="{{ form.password1.id_for_label }}">
+          Password
+        </label>
+
+        {{ form.password1 }}
+
+        {% if form.password1.help_text %}
+          <div class="form-text">
+            {{ form.password1.help_text|safe }}
+          </div>
+        {% endif %}
+
+        {% if form.password1.errors %}
+          <div class="text-danger small mt-1">
+            {{ form.password1.errors }}
+          </div>
+        {% endif %}
+      </div>
+
+      <div class="mb-4">
+        <label class="form-label" for="{{ form.password2.id_for_label }}">
+          Confirm Password
+        </label>
+
+        {{ form.password2 }}
+
+        {% if form.password2.help_text %}
+          <div class="form-text">
+            {{ form.password2.help_text }}
+          </div>
+        {% endif %}
+
+        {% if form.password2.errors %}
+          <div class="text-danger small mt-1">
+            {{ form.password2.errors }}
+          </div>
+        {% endif %}
+      </div>
+
+      <button type="submit" class="btn btn-primary">
+        Sign Up
+      </button>
+
+      <a href="{% url 'login' %}" class="btn btn-outline-secondary">
+        Back to Login
+      </a>
+
     </form>
+
   </div>
 </div>
 

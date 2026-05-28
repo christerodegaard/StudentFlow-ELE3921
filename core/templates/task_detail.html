@@ -2,19 +2,22 @@
 
 {% block content %}
 
-<!-- Uses Bootstrap buttons, cards, and list groups -->
-<!-- Uses Django template logic for conditional rendering and loops -->
+<!-- Uses Bootstrap buttons, cards, alerts, and spacing utilities -->
+<!-- Uses Django template logic for loops and conditional rendering -->
 
 <div class="mb-4">
   <a href="{% url 'task_list' task.assignment.id %}" class="btn btn-outline-secondary btn-sm">
     Back to Tasks
   </a>
+
   <a href="{% url 'note_create' task.id %}" class="btn btn-primary btn-sm">
     Add Note
   </a>
+
   <a href="{% url 'task_edit' task.id %}" class="btn btn-outline-secondary btn-sm">
     Edit Task
   </a>
+
   <a href="{% url 'task_delete' task.id %}" class="btn btn-outline-danger btn-sm">
     Delete Task
   </a>
@@ -22,61 +25,135 @@
 
 <div class="card shadow-sm mb-4">
   <div class="card-body">
-    <h1 class="card-title mb-3">{{ task.title }}</h1>
 
-    <p class="card-text mb-2">
-      <strong>Status:</strong> {{ task.get_status_display }}
-    </p>
+    <div class="d-flex justify-content-between align-items-start mb-3">
+      <div>
+        <h1 class="card-title mb-1">{{ task.title }}</h1>
 
-    <p class="card-text mb-2">
-      <!-- Converts numeric priority into readable labels (Django template logic) -->
-      <strong>Priority:</strong>
-      {% if task.priority == 1 %}
-        Low
-      {% elif task.priority == 2 %}
-        Medium
-      {% else %}
-        High
-      {% endif %}
-    </p>
+        <p class="text-muted mb-0">
+          {{ task.assignment.course.code }} —
+          {{ task.assignment.course.title }}
+        </p>
+      </div>
 
-    {% if task.due_date %}
-      <p class="card-text mb-0">
-        <strong>Due:</strong> {{ task.due_date }}
-      </p>
-    {% endif %}
+      <span class="badge bg-dark">
+        {{ task.get_status_display }}
+      </span>
+    </div>
+
+    <div class="row g-3">
+
+      <div class="col-md-4">
+        <div class="border rounded p-3 h-100 bg-light">
+          <h6 class="text-muted mb-2">Priority</h6>
+
+          <p class="mb-0 fw-semibold">
+            {% if task.priority == 1 %}
+              Low
+            {% elif task.priority == 2 %}
+              Medium
+            {% else %}
+              High
+            {% endif %}
+          </p>
+        </div>
+      </div>
+
+      <div class="col-md-4">
+        <div class="border rounded p-3 h-100 bg-light">
+          <h6 class="text-muted mb-2">Due Date</h6>
+
+          <p class="mb-0 fw-semibold">
+            {% if task.due_date %}
+              {{ task.due_date }}
+            {% else %}
+              No due date
+            {% endif %}
+          </p>
+        </div>
+      </div>
+
+      <div class="col-md-4">
+        <div class="border rounded p-3 h-100 bg-light">
+          <h6 class="text-muted mb-2">Assignment</h6>
+
+          <p class="mb-0 fw-semibold">
+            {{ task.assignment.title }}
+          </p>
+        </div>
+      </div>
+
+    </div>
   </div>
 </div>
 
-<h2 class="mb-3">Notes</h2>
+<h2 class="mb-3">Study Notes</h2>
 
 {% if notes %}
-  <div class="card shadow-sm">
-    <div class="card-body p-0">
-      <ul class="list-group list-group-flush">
-        {% for note in notes %}
-          <li class="list-group-item">
-            <p class="mb-1">{{ note.content }}</p>
-            <small class="text-muted">
-              By {{ note.author }} — {{ note.created_at }}
-            </small>
+  <div class="row g-3">
 
-            <div class="mt-2">
-              <a href="{% url 'note_edit' note.id %}" class="btn btn-sm btn-outline-secondary">
-                Edit
-              </a>
-              <a href="{% url 'note_delete' note.id %}" class="btn btn-sm btn-outline-danger">
-                Delete
-              </a>
+    {% for note in notes %}
+      <div class="col-12">
+        <div class="card shadow-sm h-100">
+
+          <div class="card-body">
+
+            <!-- Structured academic-style notes -->
+            <div class="mb-3">
+
+              <!-- AI-assisted formatting idea for clearer task note organization -->
+              <div class="d-flex justify-content-between align-items-center mb-2">
+                <h5 class="mb-0">
+                  Note {{ forloop.counter }}
+                </h5>
+
+                <small class="text-muted">
+                  {{ note.created_at }}
+                </small>
+              </div>
+
+              <div class="border rounded p-3 bg-light">
+
+                <!-- Keeps note line breaks and converts plain URLs into clickable links -->
+                <div style="white-space: pre-line; line-height: 1.7;">
+                  {{ note.content|urlize }}
+                </div>
+
+              </div>
             </div>
-          </li>
-        {% endfor %}
-      </ul>
-    </div>
+
+            <div class="d-flex justify-content-between align-items-center">
+
+              <small class="text-muted">
+                Created by {{ note.author }}
+              </small>
+
+              {% if note.author == user or user.is_staff or user.is_superuser %}
+                <div>
+                  <a href="{% url 'note_edit' note.id %}"
+                     class="btn btn-sm btn-outline-secondary">
+                    Edit
+                  </a>
+
+                  <a href="{% url 'note_delete' note.id %}"
+                     class="btn btn-sm btn-outline-danger">
+                    Delete
+                  </a>
+                </div>
+              {% endif %}
+
+            </div>
+
+          </div>
+        </div>
+      </div>
+    {% endfor %}
+
   </div>
+
 {% else %}
-  <div class="alert alert-info">
-    No notes yet.
+  <div class="alert alert-info shadow-sm">
+    No notes added yet for this task.
   </div>
 {% endif %}
 

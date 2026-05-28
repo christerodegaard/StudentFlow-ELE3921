@@ -1,5 +1,5 @@
 from django import forms
-from .models import Assignment, Course, Enrollment, Note, Task
+from .models import Assignment, Course, Enrollment, Note, Task, PersonalNote
 
 
 # form for creating and editing courses
@@ -97,3 +97,22 @@ class EnrollmentRoleForm(forms.ModelForm):
         widgets = {
             "role": forms.Select(attrs={"class": "form-select"}),
         }
+
+class PersonalNoteForm(forms.ModelForm):
+    class Meta:
+        model = PersonalNote
+        fields = ["course", "title", "content"]
+        widgets = {
+            "course": forms.Select(attrs={"class": "form-select"}),
+            "title": forms.TextInput(attrs={"class": "form-control"}),
+            "content": forms.Textarea(attrs={"class": "form-control", "rows": 5}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        user = kwargs.pop("user", None)
+        super().__init__(*args, **kwargs)
+
+        if user is not None and not user.is_staff and not user.is_superuser:
+            self.fields["course"].queryset = Course.objects.filter(
+                enrollment__user=user
+            ).distinct().order_by("code", "semester")

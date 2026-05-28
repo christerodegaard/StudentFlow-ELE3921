@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<h1 class="mb-4">
+  {% if note %}Edit Personal Note{% else %}Create Personal Note{% endif %}
+</h1>
+
+<div class="card shadow-sm" style="max-width: 800px;">
+  <div class="card-body">
+
+    <form method="post">
+      {% csrf_token %}
+
+      <div class="mb-3">
+        <label class="form-label" for="{{ form.course.id_for_label }}">
+          Course
+        </label>
+
+        {{ form.course }}
+
+        {% if form.course.errors %}
+          <div class="text-danger small mt-1">
+            {{ form.course.errors }}
+          </div>
+        {% endif %}
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label" for="{{ form.title.id_for_label }}">
+          Title
+        </label>
+
+        {{ form.title }}
+
+        {% if form.title.errors %}
+          <div class="text-danger small mt-1">
+            {{ form.title.errors }}
+          </div>
+        {% endif %}
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label" for="{{ form.content.id_for_label }}">
+          Note
+        </label>
+
+        {{ form.content }}
+
+        {% if form.content.errors %}
+          <div class="text-danger small mt-1">
+            {{ form.content.errors }}
+          </div>
+        {% endif %}
+      </div>
+
+      <button type="submit" class="btn btn-primary">
+        {% if note %}Update Note{% else %}Create Note{% endif %}
+      </button>
+
+      <a href="{% url 'personal_note_list' %}" class="btn btn-outline-secondary">
+        Cancel
+      </a>
+
+    </form>
+
+  </div>
+</div>
+
+{% endblock %}

@@ -38,4 +38,10 @@ urlpatterns = [
     path("tasks/<int:task_id>/notes/new/", views.note_create, name="note_create"),
     path("notes/<int:note_id>/edit/", views.note_edit, name="note_edit"),
     path("notes/<int:note_id>/delete/", views.note_delete, name="note_delete"),
+
+    # personal notes
+    path("notes/", views.personal_note_list, name="personal_note_list"),
+    path("notes/new/", views.personal_note_create, name="personal_note_create"),
+    path("notes/<int:note_id>/edit/", views.personal_note_edit, name="personal_note_edit"),
+    path("notes/<int:note_id>/delete/", views.personal_note_delete, name="personal_note_delete"),
 ]

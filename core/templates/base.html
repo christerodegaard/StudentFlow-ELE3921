@@ -38,11 +38,22 @@
         </button>
 
         <div class="collapse navbar-collapse" id="navbarNav">
+
           <!-- Left side navigation -->
           <div class="navbar-nav">
             {% if user.is_authenticated %}
-              <a class="nav-link" href="{% url 'dashboard' %}">Dashboard</a>
-              <a class="nav-link" href="{% url 'course_list' %}">Courses</a>
+              <a class="nav-link" href="{% url 'dashboard' %}">
+                Dashboard
+              </a>
+
+              <a class="nav-link" href="{% url 'course_list' %}">
+                Courses
+              </a>
+
+              <!-- Personal study notes section -->
+              <a class="nav-link" href="{% url 'personal_note_list' %}">
+                Notes
+              </a>
             {% endif %}
           </div>
 
@@ -63,11 +74,13 @@
               </form>
             {% else %}
               <a class="nav-link" href="{% url 'login' %}">Login</a>
+
               <a class="btn btn-primary btn-sm ms-2" href="{% url 'register' %}">
                 Register
               </a>
             {% endif %}
           </div>
+
         </div>
       </div>
     </nav>
