@@ -4,7 +4,7 @@ StudentFlow is a web application built with Django for organizing courses, assig
 
 The idea behind the project was to create something that helps students keep track of deadlines and coursework without having to switch between different tools all the time.
 
-This project was developed as part of the **ELE3921 Web Application Development** course.
+This project was developed as part of the ELE3921 Web Application Development** course.
 
 
 ## Main Features
