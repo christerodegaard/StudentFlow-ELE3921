@@ -6,7 +6,6 @@ The idea behind the project was to create something that helps students keep tra
 
 This project was developed as part of the **ELE3921 Web Application Development** course.
 
----
 
 ## Main Features
 
@@ -22,31 +21,6 @@ This project was developed as part of the **ELE3921 Web Application Development*
 - Permission handling for editing/deleting content
 - Progress tracking and task status updates
 
----
-
-## Stack
-
-| Layer | Technology |
-|-------|-----------|
-| Backend | Python, Django |
-| Database | SQLite3 |
-| Frontend | Bootstrap 5, HTML/CSS |
-
----
-
-## Database / Course Related Concepts
-
-The application applies several concepts from the course:
-
-- Relational database design
-- Foreign keys and many-to-many relationships
-- Database normalization
-- Django ORM queries
-- Migrations
-- Role-based access control
-- CRUD operations
-
----
 
 ## Running the Project
 
@@ -106,21 +80,7 @@ http://127.0.0.1:8000/
 python manage.py test
 ```
 
----
 
-## Notes About the Project
-
-- Tasks are personal to each user, while assignments and courses are shared between enrolled users.
-- Study notes connected to tasks are visible to all enrolled users in the course, while personal notes are private to each user.
-- Role-based permissions give instructors and TAs more control over course content and moderation.
-
----
-
-## AI Usage
-
-AI tools were used during parts of the development process for brainstorming, debugging, UI improvements, reviewing code structure, and documentation assistance. All code and database changes were reviewed, tested, and adapted manually. AI-assisted sections are documented in comments where relevant.
-
----
 
 ## Contributors
 
