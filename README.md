@@ -80,6 +80,13 @@ http://127.0.0.1:8000/
 python manage.py test
 ```
 
+## Sample Credentials
+
+After loading the data dump you can use these accounts to test the app:
+
+- **olanordmann** / finalexam1 — TA
+- **henryjames** / finalexam2 — Student  
+- **admin** / admin — Django admin (/admin/)
 
 
 ## Contributors
